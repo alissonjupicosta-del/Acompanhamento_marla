@@ -18,7 +18,7 @@ templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 app = FastAPI(
     title="Dashboard Comercial",
     description="Painel comercial com analises segmentadas e atualizacao da base via upload.",
-    version="2.0.0",
+    version="2.0.1",
 )
 
 
@@ -135,4 +135,4 @@ async def upload_base(
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "version": app.version}
