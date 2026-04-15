@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -8,28 +9,80 @@ from processa_meta import consolidar_metas
 from processa_vendido import consolidar_vendidos
 
 
+COD_RCA_ALIASES = ("cod_rca", "codigo", "cod", "rca", "ca3digo")
+
+
+def _normalizar_nome_coluna(nome: object) -> str:
+    texto = str(nome).strip()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    texto = texto.lower()
+    texto = texto.replace(".", " ")
+    texto = texto.replace("/", " ")
+    texto = texto.replace("-", " ")
+    texto = texto.replace("%", " pct ")
+    texto = texto.replace("(", " ")
+    texto = texto.replace(")", " ")
+    return "_".join(texto.split())
+
+
+def _garantir_coluna_cod_rca(df: pd.DataFrame, origem: str) -> pd.DataFrame:
+    if df.empty:
+        return df.copy()
+
+    ajustado = df.copy()
+    renomeadas = {_normalizar_nome_coluna(coluna): coluna for coluna in ajustado.columns}
+
+    for alias in COD_RCA_ALIASES:
+        coluna_original = renomeadas.get(alias)
+        if coluna_original is not None:
+            if coluna_original != "cod_rca":
+                ajustado = ajustado.rename(columns={coluna_original: "cod_rca"})
+            break
+    else:
+        raise ValueError(
+            f"Nao foi possivel identificar a coluna cod_rca na base de {origem}. "
+            f"Colunas encontradas: {', '.join(map(str, ajustado.columns))}"
+        )
+
+    ajustado["cod_rca"] = pd.to_numeric(ajustado["cod_rca"], errors="coerce").astype("Int64")
+    ajustado = ajustado.dropna(subset=["cod_rca"])
+    return ajustado
+
+
+def _normalizar_supervisor(df_supervisor: pd.DataFrame, origem: Path) -> pd.DataFrame:
+    renomeadas = {_normalizar_nome_coluna(coluna): coluna for coluna in df_supervisor.columns}
+    obrigatorias = {
+        "rca": "cod_rca",
+        "supervisor": "supervisor",
+        "vendedor": "vendedor",
+    }
+
+    faltantes = [alias for alias in obrigatorias if alias not in renomeadas]
+    if faltantes:
+        raise ValueError(
+            "A planilha de supervisor precisa conter as colunas RCA, SUPERVISOR e VENDEDOR. "
+            f"Arquivo recebido: {origem.name}. Colunas encontradas: {', '.join(map(str, df_supervisor.columns))}"
+        )
+
+    ajustado = df_supervisor.rename(
+        columns={renomeadas[alias]: destino for alias, destino in obrigatorias.items()}
+    )
+    ajustado["cod_rca"] = pd.to_numeric(ajustado["cod_rca"], errors="coerce").astype("Int64")
+    ajustado["supervisor"] = ajustado["supervisor"].astype("string").fillna("").str.strip()
+    ajustado["vendedor"] = ajustado["vendedor"].astype("string").fillna("").str.strip()
+    ajustado = ajustado.dropna(subset=["cod_rca"]).drop_duplicates(subset=["cod_rca"], keep="first")
+    return ajustado[["cod_rca", "supervisor", "vendedor"]]
+
+
 def consolidar_meta_vendido(
     pasta_meta: str | Path = "Meta",
     pasta_vendido: str | Path = "Vendido",
     salvar_em: str | Path | None = None,
     how: str = "outer",
 ) -> pd.DataFrame:
-    """
-    Junta as bases de Meta e Vendido pela chave `fornecedor` + `cod_rca`.
-
-    Parameters
-    ----------
-    pasta_meta:
-        Pasta com os arquivos de meta.
-    pasta_vendido:
-        Pasta com os arquivos de vendido.
-    salvar_em:
-        Se informado, salva o consolidado em .xlsx ou .csv.
-    how:
-        Tipo de merge do pandas. O padrao e `outer` para nao perder registros.
-    """
-    df_meta = consolidar_metas(pasta_meta=pasta_meta)
-    df_vendido = consolidar_vendidos(pasta_vendido=pasta_vendido)
+    df_meta = _garantir_coluna_cod_rca(consolidar_metas(pasta_meta=pasta_meta), "meta")
+    df_vendido = _garantir_coluna_cod_rca(consolidar_vendidos(pasta_vendido=pasta_vendido), "vendido")
 
     if df_meta.empty and df_vendido.empty:
         consolidado = pd.DataFrame()
@@ -69,12 +122,6 @@ def enriquecer_com_supervisor(
     base: pd.DataFrame,
     arquivo_supervisor: str | Path = "Supervisor_RCA.xlsx",
 ) -> pd.DataFrame:
-    """
-    Acrescenta as colunas de supervisor e vendedor usando a chave `cod_rca`.
-
-    A planilha de supervisores usa `RCA` como nome da chave, entÃ£o fazemos a
-    padronizacao antes do merge para manter o fluxo simples e previsivel.
-    """
     if base.empty:
         return base.copy()
 
@@ -86,25 +133,10 @@ def enriquecer_com_supervisor(
     if df_supervisor.empty:
         return base.copy()
 
-    colunas_necessarias = {"RCA", "SUPERVISOR", "VENDEDOR"}
-    if not colunas_necessarias.issubset(df_supervisor.columns):
-        return base.copy()
+    base = _garantir_coluna_cod_rca(base, "base consolidada")
+    supervisor = _normalizar_supervisor(df_supervisor, caminho_supervisor)
 
-    df_supervisor = df_supervisor.rename(
-        columns={
-            "RCA": "cod_rca",
-            "SUPERVISOR": "supervisor",
-            "VENDEDOR": "vendedor",
-        }
-    )
-    df_supervisor["cod_rca"] = pd.to_numeric(df_supervisor["cod_rca"], errors="coerce").astype("Int64")
-    df_supervisor = df_supervisor.dropna(subset=["cod_rca"]).drop_duplicates(subset=["cod_rca"], keep="first")
-
-    enriquecida = base.merge(
-        df_supervisor[["cod_rca", "supervisor", "vendedor"]],
-        on="cod_rca",
-        how="left",
-    )
+    enriquecida = base.merge(supervisor, on="cod_rca", how="left")
 
     colunas = list(enriquecida.columns)
     for coluna in ("supervisor", "vendedor"):
@@ -115,8 +147,7 @@ def enriquecer_com_supervisor(
         posicao = colunas.index("cod_rca") + 1
         colunas = colunas[:posicao] + ["supervisor", "vendedor"] + colunas[posicao:]
 
-    enriquecida = enriquecida[colunas]
-    return enriquecida
+    return enriquecida[colunas]
 
 
 def main() -> None:

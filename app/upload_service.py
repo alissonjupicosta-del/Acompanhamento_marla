@@ -186,12 +186,18 @@ async def replace_base_from_uploads(
 
         await _save_upload(supervisor_file, temp_supervisor_file)
 
-        consolidar_metas(temp_meta_dir, salvar_em=temp_meta_consolidada)
-        consolidar_vendidos(temp_vendido_dir, salvar_em=temp_vendido_consolidado)
-        base_df = consolidar_meta_vendido(temp_meta_dir, temp_vendido_dir)
-        final_df = enriquecer_com_supervisor(base_df, temp_supervisor_file)
-        final_df = _sort_final_base(final_df)
-        final_df.to_excel(temp_base_file, index=False)
+        try:
+            consolidar_metas(temp_meta_dir, salvar_em=temp_meta_consolidada)
+            consolidar_vendidos(temp_vendido_dir, salvar_em=temp_vendido_consolidado)
+            base_df = consolidar_meta_vendido(temp_meta_dir, temp_vendido_dir)
+            final_df = enriquecer_com_supervisor(base_df, temp_supervisor_file)
+            final_df = _sort_final_base(final_df)
+            final_df.to_excel(temp_base_file, index=False)
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Nao foi possivel processar os arquivos enviados: {exc}",
+            ) from exc
 
         _apply_staged_files(
             temp_meta_dir=temp_meta_dir,
