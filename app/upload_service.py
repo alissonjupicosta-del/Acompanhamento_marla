@@ -72,6 +72,7 @@ def _copy_with_retry(src: Path, dst: Path, attempts: int = 10, base_delay: float
     gc.collect()
     for attempt in range(attempts):
         try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
             return
         except OSError:
