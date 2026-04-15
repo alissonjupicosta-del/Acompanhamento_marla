@@ -50,44 +50,37 @@ def _template_context(request: Request, page_key: str, title: str, filters_enabl
     }
 
 
+def _dashboard_response(request: Request, page_key: str, title: str, filters_enabled: bool) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context=_template_context(request, page_key, title, filters_enabled),
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def overview_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "dashboard.html",
-        _template_context(request, "overview", "Visao Geral", True),
-    )
+    return _dashboard_response(request, "overview", "Visao Geral", True)
 
 
 @app.get("/vendedores", response_class=HTMLResponse)
 async def vendedores_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "dashboard.html",
-        _template_context(request, "vendedores", "Vendedores", True),
-    )
+    return _dashboard_response(request, "vendedores", "Vendedores", True)
 
 
 @app.get("/fornecedores", response_class=HTMLResponse)
 async def fornecedores_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "dashboard.html",
-        _template_context(request, "fornecedores", "Fornecedores", True),
-    )
+    return _dashboard_response(request, "fornecedores", "Fornecedores", True)
 
 
 @app.get("/supervisores", response_class=HTMLResponse)
 async def supervisores_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "dashboard.html",
-        _template_context(request, "supervisores", "Supervisores", True),
-    )
+    return _dashboard_response(request, "supervisores", "Supervisores", True)
 
 
 @app.get("/atualizar-base", response_class=HTMLResponse)
 async def upload_page(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(
-        "dashboard.html",
-        _template_context(request, "upload", "Atualizar Base", False),
-    )
+    return _dashboard_response(request, "upload", "Atualizar Base", False)
 
 
 @app.get("/api/filters")
