@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ page_title }} | Comercial Cosmetica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ request.url_for('static', path='styles.css') }}" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+    <script src="{{ request.url_for('static', path='app.js') }}" defer></script>
+  </head>
+  <body data-page="{{ page_key }}" data-filters-enabled="{{ 'true' if filters_enabled else 'false' }}">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img
+            class="brand-logo"
+            src="{{ request.url_for('static', path='logo-cosmetica.jpeg') }}"
+            alt="Logo Comercial Cosmetica"
+          />
+          <div>
+            <strong>Comercial Cosmetica</strong>
+            <span>Analises</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          {% for item in nav_items %}
+          <a
+            href="{{ item.href }}"
+            data-nav-target="{{ item.href }}"
+            class="nav-link{% if item.key == page_key %} is-active{% endif %}"
+          >
+            {{ item.label }}
+          </a>
+          {% endfor %}
+        </nav>
+
+        <div class="sidebar-status">
+          <span class="status-label">Base</span>
+          <strong id="sidebar-updated">{{ base_status.updated_at }}</strong>
+          <span id="sidebar-rows">{{ base_status.row_count }} linhas</span>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <h1>{{ page_title }}</h1>
+          <div class="topbar-meta">
+            <span id="header-months">
+              {% if base_status.months %}
+              {{ base_status.months | join(' / ') }}
+              {% else %}
+              Sem periodo
+              {% endif %}
+            </span>
+          </div>
+        </header>
+
+        {% if filters_enabled %}
+        <section class="panel filters-panel">
+          <div class="filters-actions">
+            <button id="clear-button" class="button ghost" type="button">Limpar</button>
+          </div>
+
+          <div class="filter-grid">
+            <details class="filter-card" data-filter-card="vendedor">
+              <summary class="filter-head">
+                <span>Vendedor</span>
+                <strong id="summary-vendedor">Todos</strong>
+              </summary>
+              <div id="options-vendedor" class="filter-options"></div>
+            </details>
+
+            <details class="filter-card" data-filter-card="fornecedor">
+              <summary class="filter-head">
+                <span>Fornecedor</span>
+                <strong id="summary-fornecedor">Todos</strong>
+              </summary>
+              <div id="options-fornecedor" class="filter-options"></div>
+            </details>
+
+            <details class="filter-card" data-filter-card="supervisor">
+              <summary class="filter-head">
+                <span>Supervisor</span>
+                <strong id="summary-supervisor">Todos</strong>
+              </summary>
+              <div id="options-supervisor" class="filter-options"></div>
+            </details>
+          </div>
+
+          <div id="active-filters" class="active-filters"></div>
+        </section>
+        {% endif %}
+
+        <main class="page-content">
+          {% if page_key == 'overview' %}
+          <section id="kpi-grid" class="kpi-grid"></section>
+
+          <section class="content-grid two-up">
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <h2>Supervisores</h2>
+              </div>
+              <div class="canvas-wrap">
+                <canvas id="chart-supervisores"></canvas>
+              </div>
+            </article>
+
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <h2>Atingimento</h2>
+              </div>
+              <div class="canvas-wrap">
+                <canvas id="chart-status"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel table-panel">
+            <div class="panel-head">
+              <h2>Tabela</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Vendedor</th>
+                    <th>Supervisor</th>
+                    <th>Fornecedor</th>
+                    <th>Meta</th>
+                    <th>Vendido</th>
+                    <th>Posit. Meta</th>
+                    <th>Posit. Real</th>
+                    <th>Posit. %</th>
+                    <th>Ating.</th>
+                  </tr>
+                </thead>
+                <tbody id="details-body">
+                  <tr>
+                    <td colspan="9" class="empty-state">Carregando</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {% elif page_key == 'vendedores' %}
+          <section id="kpi-grid" class="kpi-grid"></section>
+
+          <section class="content-grid single">
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <h2>Ranking</h2>
+              </div>
+              <div class="canvas-wrap tall">
+                <canvas id="chart-vendedores"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel table-panel">
+            <div class="panel-head">
+              <h2>Tabela</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Vendedor</th>
+                    <th>Supervisor</th>
+                    <th>Fornecedor</th>
+                    <th>Meta</th>
+                    <th>Vendido</th>
+                    <th>Posit. Meta</th>
+                    <th>Posit. Real</th>
+                    <th>Posit. %</th>
+                    <th>Ating.</th>
+                  </tr>
+                </thead>
+                <tbody id="details-body">
+                  <tr>
+                    <td colspan="9" class="empty-state">Carregando</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {% elif page_key == 'fornecedores' %}
+          <section id="kpi-grid" class="kpi-grid"></section>
+
+          <section class="content-grid single">
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <h2>Meta x Vendido</h2>
+              </div>
+              <div class="canvas-wrap tall">
+                <canvas id="chart-fornecedores"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel table-panel">
+            <div class="panel-head">
+              <h2>Tabela</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fornecedor</th>
+                    <th>Meta</th>
+                    <th>Vendido</th>
+                    <th>Posit. Meta</th>
+                    <th>Posit. Real</th>
+                    <th>Posit. %</th>
+                    <th>Ating.</th>
+                    <th>Volume</th>
+                  </tr>
+                </thead>
+                <tbody id="details-body">
+                  <tr>
+                    <td colspan="8" class="empty-state">Carregando</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {% elif page_key == 'supervisores' %}
+          <section id="kpi-grid" class="kpi-grid"></section>
+
+          <section class="content-grid single">
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <h2>Por Fornecedor</h2>
+              </div>
+              <div class="canvas-wrap tall">
+                <canvas id="chart-supervisor-fornecedores"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <section class="panel table-panel">
+            <div class="panel-head">
+              <h2>Tabela</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Supervisor</th>
+                    <th>Fornecedor</th>
+                    <th>Meta</th>
+                    <th>Vendido</th>
+                    <th>Posit. Meta</th>
+                    <th>Posit. Real</th>
+                    <th>Posit. %</th>
+                    <th>Ating.</th>
+                  </tr>
+                </thead>
+                <tbody id="details-body">
+                  <tr>
+                    <td colspan="8" class="empty-state">Carregando</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {% else %}
+          <section class="content-grid two-up">
+            <article class="panel upload-panel">
+              <div class="panel-head">
+                <h2>Arquivos</h2>
+              </div>
+              <form id="upload-form" class="upload-form">
+                <label class="upload-field">
+                  <span>Meta</span>
+                  <input id="meta-files" name="meta_files" type="file" accept=".xls,.xlsx,.xlsm" multiple required />
+                </label>
+
+                <label class="upload-field">
+                  <span>Vendido</span>
+                  <input id="vendido-files" name="vendido_files" type="file" accept=".txt" multiple required />
+                </label>
+
+                <label class="upload-field">
+                  <span>Supervisor</span>
+                  <input id="supervisor-file" name="supervisor_file" type="file" accept=".xls,.xlsx,.xlsm" required />
+                </label>
+
+                <button id="upload-button" class="button primary" type="submit">Atualizar base</button>
+              </form>
+            </article>
+
+            <article class="panel upload-panel">
+              <div class="panel-head">
+                <h2>Status</h2>
+              </div>
+              <div id="upload-status" class="upload-status" data-updated="{{ base_status.updated_at }}" data-rows="{{ base_status.row_count }}" data-meta="{{ base_status.meta_files }}" data-vendido="{{ base_status.vendido_files }}">
+                <div class="status-metric">
+                  <span>Atualizado</span>
+                  <strong id="status-updated">{{ base_status.updated_at }}</strong>
+                </div>
+                <div class="status-metric">
+                  <span>Linhas</span>
+                  <strong id="status-rows">{{ base_status.row_count }}</strong>
+                </div>
+                <div class="status-metric">
+                  <span>Meta</span>
+                  <strong id="status-meta">{{ base_status.meta_files }}</strong>
+                </div>
+                <div class="status-metric">
+                  <span>Vendido</span>
+                  <strong id="status-vendido">{{ base_status.vendido_files }}</strong>
+                </div>
+                <div id="upload-feedback" class="upload-feedback">Pronto</div>
+              </div>
+            </article>
+          </section>
+          {% endif %}
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
